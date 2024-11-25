@@ -1,7 +1,14 @@
 package com.chessprojectspring.controller;
 
+import com.chessprojectspring.dto.AuthResponse;
+import com.chessprojectspring.dto.LoginRequest;
+import com.chessprojectspring.dto.SignUpRequest;
 import com.chessprojectspring.model.User;
 import com.chessprojectspring.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,18 +23,30 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<User> signUp(@RequestBody User user) {
-        User createdUser = userService.signUp(user);
-        return ResponseEntity.ok(createdUser);
+    public ResponseEntity<AuthResponse> signUp(@Valid @RequestBody SignUpRequest signUpRequest) {
+        AuthResponse authResponse = userService.signUp(signUpRequest);
+        if (authResponse.getSessionId() != null) {
+            return ResponseEntity.ok(authResponse);
+        }
+        // Nickname or Username already exists
+        return ResponseEntity.status(400).body(authResponse);
     }
 
+    @Operation(summary = "User login", description = "Logs in a user with username and password")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Login successful"),
+        @ApiResponse(responseCode = "401", description = "Incorrect password"),
+        @ApiResponse(responseCode = "404", description = "Username does not exist")
+    })
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody User user) {
-        boolean isAuthenticated = userService.login(user);
-        if (isAuthenticated) {
-            return ResponseEntity.ok("Login successful");
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        AuthResponse authResponse = userService.login(loginRequest);
+        if (authResponse.getSessionId() != null) {
+            return ResponseEntity.ok(authResponse);
+        } else if ("Incorrect password".equals(authResponse.getMessage())) {
+            return ResponseEntity.status(401).body(authResponse);
         } else {
-            return ResponseEntity.status(401).body("Invalid credentials");
+            return ResponseEntity.status(404).body(authResponse);
         }
     }
 

@@ -15,6 +15,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 유저 전체 조회 (optional 사용)
     List<User> findAll();
 
-    // 유저 존재 여부 확인
+    // username 존재 여부 확인
     boolean existsByUserName(String userName);
+
+    // 닉네임 존재 여부 확인
+    boolean existsByNickname(String nickname);
 }
