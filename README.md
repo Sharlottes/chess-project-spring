@@ -1,5 +1,10 @@
 # ReadME
 
+# version
+- jdk : Oracle OpenJDK 22.0.1
+- MySql : 9.0.1 (8버전 이상 사용가능)
+
+# Test
 Front 테스트하실때 `src/main/resources/application.properties` 수정해서 사용해주시면 됩니다.
 
 <br/>
