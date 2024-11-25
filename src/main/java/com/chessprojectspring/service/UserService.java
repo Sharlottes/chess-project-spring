@@ -1,8 +1,9 @@
 package com.chessprojectspring.service;
 
-import com.chessprojectspring.dto.AuthResponse;
-import com.chessprojectspring.dto.LoginRequest;
-import com.chessprojectspring.dto.SignUpRequest;
+import com.chessprojectspring.dto.auth.LoginResponse;
+import com.chessprojectspring.dto.auth.LoginRequest;
+import com.chessprojectspring.dto.auth.SignUpRequest;
+import com.chessprojectspring.dto.auth.SignUpResponse;
 import com.chessprojectspring.model.Record;
 import com.chessprojectspring.model.User;
 import com.chessprojectspring.repository.UserRepository;
@@ -24,12 +25,12 @@ public class UserService {
     private HttpSession session;
 
     @Transactional
-    public AuthResponse signUp(SignUpRequest signUpRequest) {
+    public SignUpResponse signUp(SignUpRequest signUpRequest) {
         if (userRepository.existsByUserName(signUpRequest.getUserName())) {
-            return new AuthResponse("Username already exists", null);
+            return new SignUpResponse("Username already exists");
         }
         if (userRepository.existsByNickname(signUpRequest.getNickname())) {
-            return new AuthResponse("Nickname already exists", null);
+            return new SignUpResponse("Nickname already exists");
         }
 
         User user = User.builder()
@@ -47,31 +48,31 @@ public class UserService {
         User savedUser = userRepository.save(user);
         session.setAttribute("userName", savedUser.getUserName());
 
-        //return new AuthResponse("Sign up successful", session.getId());
+        //return new LoginResponse("Sign up successful", session.getId());
         // 회원가입 후 로그인 해야 하므로 sessionId는 넘겨줄 필요 없음
-        return new AuthResponse("Sign up successful", null);
+        return new SignUpResponse("Sign up successful");
     }
 
-    public AuthResponse login(LoginRequest loginRequest) {
+    public LoginResponse login(LoginRequest loginRequest) {
         // userName으로 사용자 조회
         Optional<User> userOptional = userRepository.findByUserName(loginRequest.getUserName());
 
         if (!userOptional.isPresent()) {
             // userName이 존재하지 않는 경우
-            return new AuthResponse("Username does not exist", null);
+            return new LoginResponse("Username does not exist", null);
         }
 
         User user = userOptional.get();
         // 비밀번호 확인
         if (!user.getPassword().equals(loginRequest.getPassword())) {
             // 비밀번호가 틀린 경우
-            return new AuthResponse("Incorrect password", null);
+            return new LoginResponse("Incorrect password", null);
         }
 
         // 비밀번호가 맞으면 세션에 userName 저장
         session.setAttribute("userName", user.getUserName());
         // 로그인 성공 응답
-        return new AuthResponse("Login successful", session.getId());
+        return new LoginResponse("Login successful", session.getId());
     }
 
     public void deleteUser(Long id) {

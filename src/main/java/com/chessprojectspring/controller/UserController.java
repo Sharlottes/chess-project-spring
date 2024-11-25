@@ -1,8 +1,9 @@
 package com.chessprojectspring.controller;
 
-import com.chessprojectspring.dto.AuthResponse;
-import com.chessprojectspring.dto.LoginRequest;
-import com.chessprojectspring.dto.SignUpRequest;
+import com.chessprojectspring.dto.auth.LoginResponse;
+import com.chessprojectspring.dto.auth.LoginRequest;
+import com.chessprojectspring.dto.auth.SignUpRequest;
+import com.chessprojectspring.dto.auth.SignUpResponse;
 import com.chessprojectspring.model.User;
 import com.chessprojectspring.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,14 +23,24 @@ public class UserController {
         this.userService = userService;
     }
 
+    @Operation(summary = "User sign up", description = "Signs up a user with username, password, and nickname")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Sign up successful"),
+        @ApiResponse(responseCode = "400", description = "Nickname or Username already exists"),
+        // 500번대는 서버 에러 (문자열 길이가 너무 길거나 너무 짧은 경우 등)
+        @ApiResponse(responseCode = "500", description = "Username or Nickname or Password is too long or too short"),
+        @ApiResponse(responseCode = "500", description = "Any other server error")
+    })
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> signUp(@Valid @RequestBody SignUpRequest signUpRequest) {
-        AuthResponse authResponse = userService.signUp(signUpRequest);
-        if (authResponse.getSessionId() != null) {
-            return ResponseEntity.ok(authResponse);
+    public ResponseEntity<SignUpResponse> signUp(@Valid @RequestBody SignUpRequest signUpRequest) {
+        SignUpResponse signUpResponse = userService.signUp(signUpRequest);
+
+        // Sign up successful
+        if (signUpResponse.getMessage().equals("Sign up successful")) {
+            return ResponseEntity.ok(signUpResponse);
         }
         // Nickname or Username already exists
-        return ResponseEntity.status(400).body(authResponse);
+        return ResponseEntity.status(400).body(signUpResponse);
     }
 
     @Operation(summary = "User login", description = "Logs in a user with username and password")
@@ -39,14 +50,14 @@ public class UserController {
         @ApiResponse(responseCode = "404", description = "Username does not exist")
     })
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-        AuthResponse authResponse = userService.login(loginRequest);
-        if (authResponse.getSessionId() != null) {
-            return ResponseEntity.ok(authResponse);
-        } else if ("Incorrect password".equals(authResponse.getMessage())) {
-            return ResponseEntity.status(401).body(authResponse);
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
+        LoginResponse loginResponse = userService.login(loginRequest);
+        if (loginResponse.getSessionId() != null) {
+            return ResponseEntity.ok(loginResponse);
+        } else if ("Incorrect password".equals(loginResponse.getMessage())) {
+            return ResponseEntity.status(401).body(loginResponse);
         } else {
-            return ResponseEntity.status(404).body(authResponse);
+            return ResponseEntity.status(404).body(loginResponse);
         }
     }
 
