@@ -7,15 +7,20 @@ import com.chessprojectspring.dto.auth.SignUpResponse;
 import com.chessprojectspring.model.Record;
 import com.chessprojectspring.model.User;
 import com.chessprojectspring.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.servlet.http.HttpSession;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class UserService {
 
     @Autowired
@@ -48,7 +53,7 @@ public class UserService {
         User savedUser = userRepository.save(user);
         session.setAttribute("userName", savedUser.getUserName());
 
-        //return new LoginResponse("Sign up successful", session.getId());
+        //return new LoginResponse("Sign up successful", session.getUid());
         // 회원가입 후 로그인 해야 하므로 sessionId는 넘겨줄 필요 없음
         return new SignUpResponse("Sign up successful");
     }
@@ -59,20 +64,27 @@ public class UserService {
 
         if (!userOptional.isPresent()) {
             // userName이 존재하지 않는 경우
-            return new LoginResponse("Username does not exist", null);
+            return new LoginResponse("Username does not exist");
         }
 
         User user = userOptional.get();
         // 비밀번호 확인
         if (!user.getPassword().equals(loginRequest.getPassword())) {
             // 비밀번호가 틀린 경우
-            return new LoginResponse("Incorrect password", null);
+            return new LoginResponse("Incorrect password");
         }
 
         // 비밀번호가 맞으면 세션에 userName 저장
         session.setAttribute("userName", user.getUserName());
+
+        // 현재 존재하는 모든 세션 정보를 로그에 출력
+        List<String> attributeNames = Collections.list(session.getAttributeNames());
+        attributeNames.forEach(name -> {
+            log.debug("Session name: {}, value: {}", name, session.getAttribute(name));
+        });
+
         // 로그인 성공 응답
-        return new LoginResponse("Login successful", session.getId());
+        return new LoginResponse("Login successful", session.getId(), user);
     }
 
     public void deleteUser(Long id) {
