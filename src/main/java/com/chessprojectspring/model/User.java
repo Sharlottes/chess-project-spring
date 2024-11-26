@@ -22,7 +22,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String userName;
 
-    @Column(nullable = false)
+    @Column(nullable = false) 
     private String password;
 
     @Column(nullable = false, unique = true)
@@ -30,5 +30,4 @@ public class User {
 
     @OneToOne(cascade = CascadeType.ALL, mappedBy = "user", orphanRemoval = true)
     private Record record;
-
 }

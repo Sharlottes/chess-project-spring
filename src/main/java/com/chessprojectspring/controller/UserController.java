@@ -9,7 +9,9 @@ import com.chessprojectspring.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,19 +54,45 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         LoginResponse loginResponse = userService.login(loginRequest);
-        if (loginResponse.getSessionId() != null) {
-            return ResponseEntity.ok(loginResponse);
-        } else if ("Incorrect password".equals(loginResponse.getMessage())) {
-            return ResponseEntity.status(401).body(loginResponse);
-        } else {
-            return ResponseEntity.status(404).body(loginResponse);
-        }
+        
+        // Java 14 Switch 표현식
+        return switch (loginResponse.getMessage()) {
+            case "Login successful" -> ResponseEntity.ok(loginResponse);
+            case "Incorrect password" -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(loginResponse);
+            case "Username does not exist" -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(loginResponse);
+            default -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(loginResponse);
+        };
     }
 
+    @Operation(summary = "Delete user account", description = "Deletes a user account if authenticated")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "User deleted successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized access - User not logged in"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Cannot delete other user's account"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id) {
-        userService.deleteUser(id);
-        return ResponseEntity.ok("User deleted successfully");
+    public ResponseEntity<String> deleteUser(@PathVariable Long id, HttpSession session) {
+        // 세션에서 사용자 이름 가져오기
+        String sessionUserName = (String) session.getAttribute("userName");
+
+        // 세션에 사용자 이름이 없으면 401 에러 반환
+        if (sessionUserName == null) {
+            return ResponseEntity.status(401).body("User not logged in");
+        }
+        
+        // 사용자 삭제 try-catch
+        try {
+            userService.deleteUser(id, sessionUserName);
+            return ResponseEntity.ok("User deleted successfully");
+        } catch (IllegalArgumentException e) {
+            
+            return switch (e.getMessage()) {
+                case "User not found" -> ResponseEntity.status(404).body(e.getMessage());
+                case "Unauthorized access" -> ResponseEntity.status(403).body(e.getMessage());
+                default -> ResponseEntity.status(500).body("Internal server error");
+            };
+        }
     }
 
     @PutMapping("/{id}/password")

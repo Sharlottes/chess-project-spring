@@ -87,9 +87,20 @@ public class UserService {
         return new LoginResponse("Login successful", session.getId(), user);
     }
 
-    public void deleteUser(Long id) {
-        // 회원탈퇴 로직 구현
+    // 트랜잭션 관리: 매서드 내의 모든 작업이 성공적으로 완료되어야 커밋됨. 
+    // 예외 발생 시 처음으로 롤백하여 다시 실행. (데이터 일관성 유지)
+    @Transactional 
+    public void deleteUser(Long id, String sessionUserName) {
+        // 세션에서 가져온 사용자와 삭제하려는 사용자가 동일한지 확인
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                
+        if (!user.getUserName().equals(sessionUserName)) {
+            throw new IllegalArgumentException("Unauthorized access");
+        }
+        
         userRepository.deleteById(id);
+        session.invalidate(); // 세션 무효화
     }
 
     public User updatePassword(Long id, String newPassword) {
