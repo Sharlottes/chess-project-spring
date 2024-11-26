@@ -1,9 +1,6 @@
 package com.chessprojectspring.service;
 
-import com.chessprojectspring.dto.auth.LoginResponse;
-import com.chessprojectspring.dto.auth.LoginRequest;
-import com.chessprojectspring.dto.auth.SignUpRequest;
-import com.chessprojectspring.dto.auth.SignUpResponse;
+import com.chessprojectspring.dto.auth.*;
 import com.chessprojectspring.model.Record;
 import com.chessprojectspring.model.User;
 import com.chessprojectspring.repository.UserRepository;
@@ -90,23 +87,35 @@ public class UserService {
     // 트랜잭션 관리: 매서드 내의 모든 작업이 성공적으로 완료되어야 커밋됨. 
     // 예외 발생 시 처음으로 롤백하여 다시 실행. (데이터 일관성 유지)
     @Transactional 
-    public void deleteUser(Long id, String sessionUserName) {
-        // 세션에서 가져온 사용자와 삭제하려는 사용자가 동일한지 확인
+    public void deleteUser(Long id, DeleteUserRequest deleteUserRequest, String sessionUserName) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-                
+
         if (!user.getUserName().equals(sessionUserName)) {
             throw new IllegalArgumentException("Unauthorized access");
         }
-        
+
+        if (!user.getPassword().equals(deleteUserRequest.getPassword())) {
+            throw new IllegalArgumentException("Incorrect password");
+        }
+
         userRepository.deleteById(id);
         session.invalidate(); // 세션 무효화
     }
 
-    public User updatePassword(Long id, String newPassword) {
-        // 비밀번호 변경 로직 구현
-        User user = userRepository.findById(id).orElseThrow();
-        user.setPassword(newPassword);
+    public User updatePassword(Long id, EditPwdRequest editPwdRequest, String sessionUserName) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!user.getUserName().equals(sessionUserName)) {
+            throw new IllegalArgumentException("Unauthorized access");
+        }
+
+        if (!user.getPassword().equals(editPwdRequest.getOldPassword())) {
+            throw new IllegalArgumentException("Incorrect old password");
+        }
+
+        user.setPassword(editPwdRequest.getNewPassword());
         return userRepository.save(user);
     }
 

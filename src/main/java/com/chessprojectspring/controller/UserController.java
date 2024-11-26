@@ -1,9 +1,6 @@
 package com.chessprojectspring.controller;
 
-import com.chessprojectspring.dto.auth.LoginResponse;
-import com.chessprojectspring.dto.auth.LoginRequest;
-import com.chessprojectspring.dto.auth.SignUpRequest;
-import com.chessprojectspring.dto.auth.SignUpResponse;
+import com.chessprojectspring.dto.auth.*;
 import com.chessprojectspring.model.User;
 import com.chessprojectspring.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,38 +64,58 @@ public class UserController {
     @Operation(summary = "Delete user account", description = "Deletes a user account if authenticated")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "User deleted successfully"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized access - User not logged in"),
-        @ApiResponse(responseCode = "403", description = "Forbidden - Cannot delete other user's account"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized access - User not logged in or Unauthorized access"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Incorrect password"),
         @ApiResponse(responseCode = "404", description = "User not found")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id, HttpSession session) {
-        // 세션에서 사용자 이름 가져오기
+    public ResponseEntity<String> deleteUser(@PathVariable Long id, @Valid @RequestBody DeleteUserRequest deleteUserRequest, HttpSession session) {
         String sessionUserName = (String) session.getAttribute("userName");
 
         // 세션에 사용자 이름이 없으면 401 에러 반환
         if (sessionUserName == null) {
-            return ResponseEntity.status(401).body("User not logged in");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not logged in");
         }
         
         // 사용자 삭제 try-catch
         try {
-            userService.deleteUser(id, sessionUserName);
+            userService.deleteUser(id, deleteUserRequest, sessionUserName);
             return ResponseEntity.ok("User deleted successfully");
         } catch (IllegalArgumentException e) {
-            
             return switch (e.getMessage()) {
-                case "User not found" -> ResponseEntity.status(404).body(e.getMessage());
-                case "Unauthorized access" -> ResponseEntity.status(403).body(e.getMessage());
-                default -> ResponseEntity.status(500).body("Internal server error");
+                case "User not found" -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+                case "Unauthorized access" -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+                case "Incorrect password" -> ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+                default -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error");
             };
         }
     }
 
+    @Operation(summary = "Update user password", description = "Updates the password of the authenticated user")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Password updated successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized access - User not logged in"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Incorrect old password"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @PutMapping("/{id}/password")
-    public ResponseEntity<User> updatePassword(@PathVariable Long id, @RequestBody String newPassword) {
-        User updatedUser = userService.updatePassword(id, newPassword);
-        return ResponseEntity.ok(updatedUser);
+    public ResponseEntity<String> updatePassword(@PathVariable Long id, @Valid @RequestBody EditPwdRequest editPwdRequest, HttpSession session) {
+        String sessionUserName = (String) session.getAttribute("userName");
+
+        if (sessionUserName == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not logged in");
+        }
+
+        try {
+            userService.updatePassword(id, editPwdRequest, sessionUserName);
+            return ResponseEntity.ok("Password updated successfully");
+        } catch (IllegalArgumentException e) {
+            return switch (e.getMessage()) {
+                case "User not found" -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+                case "Incorrect old password" -> ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+                default -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error");
+            };
+        }
     }
 
     @PutMapping("/{id}/nickname")
