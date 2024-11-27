@@ -119,10 +119,19 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public User updateNickname(Long id, String newNickname) {
-        // 닉네임 변경 로직 구현
-        User user = userRepository.findById(id).orElseThrow();
-        user.setNickname(newNickname);
+    public User updateNickname(Long id, EditNicknameRequest editNicknameRequest, String sessionUserName) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!user.getUserName().equals(sessionUserName)) {
+            throw new IllegalArgumentException("Unauthorized access");
+        }
+
+        if (!user.getPassword().equals(editNicknameRequest.getPassword())) {
+            throw new IllegalArgumentException("Incorrect password");
+        }
+
+        user.setNickname(editNicknameRequest.getNewNickname());
         return userRepository.save(user);
     }
 }

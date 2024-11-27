@@ -1,11 +1,12 @@
 package com.chessprojectspring.dto.auth;
 
 import com.chessprojectspring.model.User;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
-@Setter
-@Getter
+@Data
+@NoArgsConstructor // 기본 생성자 자동 생성
+@AllArgsConstructor // 모든 필드를 파라미터로 받는 생성자 자동 생성
+@Builder // 빌더 패턴을 사용하는 메소드 자동 생성
 public class LoginResponse {
     // Getters and Setters
     private String message;

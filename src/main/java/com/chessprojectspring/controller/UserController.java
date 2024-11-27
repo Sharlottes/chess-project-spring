@@ -76,7 +76,6 @@ public class UserController {
         if (sessionUserName == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not logged in");
         }
-        
         // 사용자 삭제 try-catch
         try {
             userService.deleteUser(id, deleteUserRequest, sessionUserName);
@@ -118,9 +117,31 @@ public class UserController {
         }
     }
 
+    @Operation(summary = "Update user nickname", description = "Updates the nickname of the authenticated user")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Nickname updated successfully"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized access - User not logged in"),
+        @ApiResponse(responseCode = "403", description = "Forbidden - Incorrect password"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @PutMapping("/{id}/nickname")
-    public ResponseEntity<User> updateNickname(@PathVariable Long id, @RequestBody String newNickname) {
-        User updatedUser = userService.updateNickname(id, newNickname);
-        return ResponseEntity.ok(updatedUser);
+    public ResponseEntity<String> updateNickname(@PathVariable Long id, @Valid @RequestBody EditNicknameRequest editNicknameRequest, HttpSession session) {
+        String sessionUserName = (String) session.getAttribute("userName");
+
+        if (sessionUserName == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not logged in");
+        }
+
+        try {
+            userService.updateNickname(id, editNicknameRequest, sessionUserName);
+            return ResponseEntity.ok("Nickname updated successfully");
+        } catch (IllegalArgumentException e) {
+            return switch (e.getMessage()) {
+                case "User not found" -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+                case "Unauthorized access" -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+                case "Incorrect password" -> ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+                default -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error");
+            };
+        }
     }
 }
