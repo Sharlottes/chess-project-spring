@@ -3,6 +3,7 @@ package com.chessprojectspring.controller;
 import com.chessprojectspring.dto.auth.*;
 import com.chessprojectspring.model.User;
 import com.chessprojectspring.service.UserService;
+import com.chessprojectspring.util.HttpSessionUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -17,9 +18,11 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+    private final HttpSessionUtil httpSessionUtil;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, HttpSessionUtil httpSessionUtil) {
         this.userService = userService;
+        this.httpSessionUtil = httpSessionUtil;
     }
 
     @Operation(summary = "User sign up", description = "Signs up a user with username, password, and nickname")
@@ -143,5 +146,40 @@ public class UserController {
                 default -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error");
             };
         }
+    }
+
+    @Operation(summary = "Refresh user session", description = "Refreshes the expiration time of the user's session")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Session refreshed successfully"),
+        @ApiResponse(responseCode = "401", description = "User not logged in")
+    })
+    @PostMapping("/refresh-session")
+    public ResponseEntity<String> refreshSession(HttpSession session) {
+        if (session.getAttribute("userName") == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not logged in");
+        }
+        httpSessionUtil.refreshSession(session);
+        return ResponseEntity.ok("Session refreshed successfully");
+    }
+
+    @Operation(summary = "Get session remaining time", description = "Returns the remaining time of the user's session in seconds")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Remaining time returned successfully"),
+        @ApiResponse(responseCode = "401", description = "User not logged in")
+    })
+    @GetMapping("/session-remaining-time")
+    public ResponseEntity<String> getSessionRemainingTime(HttpSession session) {
+        if (session.getAttribute("userName") == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not logged in");
+        }
+        
+        long currentTime = System.currentTimeMillis();
+        long lastAccessedTime = session.getLastAccessedTime(); 
+        int maxInactiveInterval = session.getMaxInactiveInterval(); // 현재 세션에 설정된 만료 시간
+        
+        long remainingTime = (maxInactiveInterval * 1000) - (currentTime - lastAccessedTime);
+        remainingTime = remainingTime / 1000; // ms to sec
+
+        return ResponseEntity.ok("Remaining session time: " + remainingTime + " seconds");
     }
 }

@@ -20,11 +20,20 @@ import java.util.Optional;
 @Slf4j
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    // @Autowired
+    // private UserRepository userRepository;
 
-    @Autowired
-    private HttpSession session;
+    // @Autowired
+    // private HttpSession session;
+
+    // spring 생성자 주입 권장
+    private final UserRepository userRepository;
+    private final HttpSession session;
+
+    public UserService(UserRepository userRepository, HttpSession session) {
+        this.userRepository = userRepository;
+        this.session = session;
+    }
 
     @Transactional
     public SignUpResponse signUp(SignUpRequest signUpRequest) {
