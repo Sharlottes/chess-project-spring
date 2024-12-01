@@ -5,9 +5,9 @@
 //
 //public class WebSocketHandlerImpl extends TextWebSocketHandler {
 //
-//    private final SessionManager sessionManager;
+//    private final GameManager sessionManager;
 //
-//    public WebSocketHandlerImpl(SessionManager sessionManager) {
+//    public WebSocketHandlerImpl(GameManager sessionManager) {
 //        this.sessionManager = sessionManager;
 //    }
 //

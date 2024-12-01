@@ -32,5 +32,23 @@ public class GameRoom {
         board.reset();
     }
 
+    // snooze 대기하는 메소드
+    public void snooze() {
+        playerWhite.setIsMyTurn(false);
+        playerBlack.setIsMyTurn(false);
+    }
+
+    // 턴 변경 메소드
+    public void changeTurn() {
+        turn = (turn + 1) % 2; // 현재 0이면 1, 1이면 0 으로 변경
+        if(turn == 0) {
+            playerWhite.setIsMyTurn(true);
+            playerBlack.setIsMyTurn(false);
+        } else {
+            playerWhite.setIsMyTurn(false);
+            playerBlack.setIsMyTurn(true);
+        }
+    }
+
     // 게임 진행 상태 관리 메서드
 } 
