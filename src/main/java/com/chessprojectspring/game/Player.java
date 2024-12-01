@@ -1,4 +1,4 @@
-package com.chessprojectspring.websocket;
+package com.chessprojectspring.game;
 
 import lombok.Getter;
 import lombok.Setter;
