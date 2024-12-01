@@ -38,10 +38,14 @@ public class UserService {
     @Transactional
     public SignUpResponse signUp(SignUpRequest signUpRequest) {
         if (userRepository.existsByUserName(signUpRequest.getUserName())) {
-            return new SignUpResponse("Username already exists");
+            return SignUpResponse.builder()
+                    .userName("Username already exists")
+                    .build();
         }
         if (userRepository.existsByNickname(signUpRequest.getNickname())) {
-            return new SignUpResponse("Nickname already exists");
+            return SignUpResponse.builder()
+                    .nickname("Nickname already exists")
+                    .build();
         }
 
         User user = User.builder()
@@ -61,7 +65,9 @@ public class UserService {
 
         //return new LoginResponse("Sign up successful", session.getUid());
         // 회원가입 후 로그인 해야 하므로 sessionId는 넘겨줄 필요 없음
-        return new SignUpResponse("Sign up successful");
+        return SignUpResponse.builder()
+                .message("Sign up successful")
+                .build();
     }
 
     public LoginResponse login(LoginRequest loginRequest) {
@@ -70,14 +76,18 @@ public class UserService {
 
         if (!userOptional.isPresent()) {
             // userName이 존재하지 않는 경우
-            return new LoginResponse("Username does not exist");
+            return LoginResponse.builder()
+                    .userName("Username does not exist")
+                    .build();
         }
 
         User user = userOptional.get();
         // 비밀번호 확인
         if (!user.getPassword().equals(loginRequest.getPassword())) {
             // 비밀번호가 틀린 경우
-            return new LoginResponse("Incorrect password");
+            return LoginResponse.builder()
+                    .password("Incorrect password")
+                    .build();
         }
 
         // 비밀번호가 맞으면 세션에 userName 저장

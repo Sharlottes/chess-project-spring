@@ -42,6 +42,7 @@ public class UserController {
             return ResponseEntity.ok(signUpResponse);
         }
         // Nickname or Username already exists
+        
         return ResponseEntity.status(400).body(signUpResponse);
     }
 

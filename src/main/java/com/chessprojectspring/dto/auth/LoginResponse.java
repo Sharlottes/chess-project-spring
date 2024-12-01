@@ -12,14 +12,15 @@ public class LoginResponse {
     private String message;
     private String sessionId;
     private Long uid;
-    private String username;
+    private String userName;
+    private String password;
     private String nickname;
 
     public LoginResponse(String message, String sessionId, User user) {
         this.message = message;
         this.sessionId = sessionId;
         this.uid = user.getUid();
-        this.username = user.getUserName();
+        this.userName = user.getUserName();
         this.nickname = user.getNickname();
     }
 
