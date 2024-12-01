@@ -2,6 +2,9 @@ package com.chessprojectspring.repository;
 
 import com.chessprojectspring.game.GameRoom;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.Map;
 
@@ -39,4 +42,8 @@ public class GameRoomRepository {
                 .findFirst()
                 .orElse(null);
     }
+
+    // 스케줄링 작업
+    private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private ScheduledFuture<?> scheduledFuture;
 }

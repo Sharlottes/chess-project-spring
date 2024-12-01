@@ -50,20 +50,20 @@ public class GameManager {
         return waitingQueue.poll();
     }
 
-    /**
-     * 대기 큐에서 플레이어 두 명을 꺼내어 반환
-     * @return 두 명의 UID가 담긴 배열, 충분하지 않으면 null 반환
-     */
-    public Long[] pollTwoFromQueue() {
-        synchronized (queueLock) {
-            if (waitingQueue.size() >= 2) {
-                Long first = waitingQueue.poll();
-                Long second = waitingQueue.poll();
-                if (first != null && second != null) {
-                    return new Long[]{first, second};
-                }
-            }
-            return null;
-        }
-    }
+//    /**
+//     * 대기 큐에서 플레이어 두 명을 꺼내어 반환
+//     * @return 두 명의 UID가 담긴 배열, 충분하지 않으면 null 반환
+//     */
+//    public Long[] pollTwoFromQueue() {
+//        synchronized (queueLock) {
+//            if (waitingQueue.size() >= 2) {
+//                Long first = waitingQueue.poll();
+//                Long second = waitingQueue.poll();
+//                if (first != null && second != null) {
+//                    return new Long[]{first, second};
+//                }
+//            }
+//            return null;
+//        }
+//    }
 } 
