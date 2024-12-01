@@ -2,9 +2,14 @@ package com.chessprojectspring.game;
 
 import com.github.bhlangonijr.chesslib.Board;
 import org.springframework.web.socket.WebSocketSession;
+import lombok.Getter;
 
+@Getter
 public class GameRoom {
 
+    // 게임룸 고유 id
+    private final Long id;
+    
     private final Board board = new Board();
 
     private final Player playerWhite; // 백돌이 먼저 시작

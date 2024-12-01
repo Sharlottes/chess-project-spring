@@ -37,11 +37,12 @@ public class Player {
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private ScheduledFuture<?> scheduledFuture;
 
-    public Player() {
-        startScheduler();
+    public Player(Long uid) {
+        this.uid = uid;
     }
 
-    private void startScheduler() {
+    // 외부에서 시작해 줘야 함. 
+    public void startScheduler() {
         scheduledFuture = scheduler.scheduleAtFixedRate(this::checkTimeLeft, 0, 100, TimeUnit.MILLISECONDS);
     }
 
@@ -60,7 +61,6 @@ public class Player {
             if(currentTime - myTurnStartTime.get() > timeLeft.get() * 1000) {
                 // 게임 종료 메소드 호출
                 sendGameOverMessage();
-                stopScheduler();
             }
         }
     }
@@ -71,7 +71,8 @@ public class Player {
         simpMessagingTemplate.convertAndSend(destination, message);
     }
 
-    private void stopScheduler() {
+    // 외부에서 중지해 줘야 함. 
+    public void stopScheduler() {
         if (scheduledFuture != null) {
             scheduledFuture.cancel(false);
         }
