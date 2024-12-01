@@ -1,6 +1,7 @@
 package com.chessprojectspring.repository;
 
 import com.chessprojectspring.game.GameRoom;
+import org.springframework.stereotype.Repository;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -8,6 +9,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.Map;
 
+@Repository
 public class GameRoomRepository {
 
     private final Map<Long, GameRoom> gameRoomMap = new ConcurrentHashMap<>();

@@ -56,17 +56,17 @@ public class MessageController {
         }
 
         //TODO : 체스 말 움직임 유효성 검사
-        boolean isValidMove = gameRoom.getBoard().isMoveLegal(moveRequest.getMove(), true);
+        //boolean isValidMove = gameRoom.getBoard().isMoveLegal(moveRequest.getMove(), true);
 
         //TODO : 체스 말 움직임 실행
-        if (isValidMove) {
-            gameRoom.getBoard().doMove(moveRequest.getMove());
-            long timeSpent = System.currentTimeMillis() - gameRoom.getLatestTurnStartTime().get();
-            currentPlayer.getTimeLeft().addAndGet((int) -timeSpent / 1000);
-            gameRoom.changeTurn();
-        } else {
-            simpMessagingTemplate.convertAndSend("/game/move/" + uid, "invalid move");
-        }
+//        if (isValidMove) {
+//            gameRoom.getBoard().doMove(moveRequest.getMove());
+//            long timeSpent = System.currentTimeMillis() - gameRoom.getLatestTurnStartTime().get();
+//            currentPlayer.getTimeLeft().addAndGet((int) -timeSpent / 1000);
+//            gameRoom.changeTurn();
+//        } else {
+//            simpMessagingTemplate.convertAndSend("/game/move/" + uid, "invalid move");
+//        }
     }
 
     // 게임 찾기 메소드

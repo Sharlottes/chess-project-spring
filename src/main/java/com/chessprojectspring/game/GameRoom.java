@@ -142,7 +142,7 @@ public class GameRoom {
     }
 
     // 누가 이겼는지 반환하는 메소드
-    public String getWinner() {
-        
-    }
+//    public String getWinner() {
+//
+//    }
 } 
