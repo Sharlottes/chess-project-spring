@@ -1,24 +1,15 @@
-package com.chessprojectspring.websocket;
+package com.chessprojectspring.repository;
 
 import com.chessprojectspring.game.GameRoom;
-import org.springframework.web.socket.WebSocketSession;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Repository;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-@Component
-public class GameManager {
+@Repository
+public class WaitingQueueRepository {
 
-    private final Map<Long, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<Long> waitingQueue = new ConcurrentLinkedQueue<>(); // 스레드 안전한 큐
     private final Object queueLock = new Object();
-
-
-    public synchronized void createGameRoom() {
-        // 게임룸 생성 로직
-    }
 
     public synchronized void startGame(GameRoom gameRoom) {
         // 게임 시작 로직
@@ -48,6 +39,10 @@ public class GameManager {
      */
     public Long pollOneFromQueue() {
         return waitingQueue.poll();
+    }
+
+    public void removeFromWaitingQueue(Long uid) {
+        waitingQueue.remove(uid);
     }
 
 //    /**

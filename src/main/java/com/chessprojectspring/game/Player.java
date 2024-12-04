@@ -21,11 +21,11 @@ public class Player {
     // uid
     private Long uid; // User.uid
 
-    // 플레이어의 남은 시간
-    private AtomicInteger timeLeft = new AtomicInteger(1800); // 30분
+    // 플레이어의 남은 시간 (ms)
+    private AtomicLong timeLeft = new AtomicLong(1800000); // 30분
 
     // 추가시간 제공 메소드
-    public void addTime(int timeToAdd) {
+    public void addTime(long timeToAdd) {
         timeLeft.addAndGet(timeToAdd);
     }
 }

@@ -44,8 +44,4 @@ public class GameRoomRepository {
                 .findFirst()
                 .orElse(null);
     }
-
-    // 스케줄링 작업
-    private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-    private ScheduledFuture<?> scheduledFuture;
 }

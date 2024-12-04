@@ -32,7 +32,9 @@ public class GameRoom {
     private Player playerBlack;
 
     // turn 변수는 현재 턴을 나타내는 변수 (스레드 안전하게 접근하기 위해 AtomicInteger 사용)
-    private final AtomicBoolean isSnooze = new AtomicBoolean(false);
+    @Builder.Default
+    private AtomicBoolean isSnooze = new AtomicBoolean(false);
+    @Builder.Default
     private AtomicInteger turn = new AtomicInteger(0); // 0:백, 1:흑
 
     // 시간 관련 변수
@@ -41,13 +43,14 @@ public class GameRoom {
 
     // 게임 시작 시 주워지는 시간
     @Builder.Default
-    private int timeToStartGame = 1800; // 30분
+    private long timeToStartGame = 1800000; // 30분
 
     // 매 턴 시작 시 추가되는 시간
     @Builder.Default
-    private int timeToAddEveryTurnStart = 5; // 5초
+    private long timeToAddEveryTurnStart = 10000; // 10초
 
     // 가장 최근 턴 시작 시간
+    @Builder.Default
     private AtomicLong latestTurnStartTime = new AtomicLong(0);
 
     private SimpMessagingTemplate simpMessagingTemplate;
@@ -58,14 +61,22 @@ public class GameRoom {
     }
 
     // 게임 시작 시 초기화 메서드
-    public void initializeGame() {
-        // 게임 시작 시 초기화 로직
-        //board.reset();
+    public void initGame(long timeToStartGame, long timeToAddEveryTurnStart) {
+        this.timeToStartGame = timeToStartGame;
+        this.timeToAddEveryTurnStart = timeToAddEveryTurnStart;
+
+        playerWhite.getTimeLeft().set(1800000);
+        playerBlack.getTimeLeft().set(1800000);
+    }
+    public void initGame() {
+        initGame(timeToStartGame, timeToAddEveryTurnStart);
     }
 
     // 게임 시작 메소드
     public void startGame() {
+        initGame();
         gameStartTime = System.currentTimeMillis();
+        latestTurnStartTime.set(System.currentTimeMillis());
         startScheduler();
     }
 
@@ -76,16 +87,17 @@ public class GameRoom {
 
     // 턴 변경 메소드
     public void changeTurn() {
-        isSnooze.set(false);
         turn.set(turn.addAndGet(1) % 2); // 현재 0이면 1, 1이면 0 으로 변경
         if(turn.get() == 0) {
             playerWhite.addTime(timeToAddEveryTurnStart);
         } else {
             playerBlack.addTime(timeToAddEveryTurnStart);
         }
+        latestTurnStartTime.set(System.currentTimeMillis());
     }
 
     // 스케줄링 관련 메소드 여기로 옮기기
+    @Builder.Default
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private ScheduledFuture<?> scheduledFuture;
 
@@ -93,6 +105,10 @@ public class GameRoom {
     public void startScheduler() {
         scheduledFuture = scheduler.scheduleAtFixedRate(this::checkTimeLeft, 0, 100, TimeUnit.MILLISECONDS);
     }
+
+    // 현재 시간
+    @Builder.Default
+    private long currentTime = System.currentTimeMillis();
 
     // 플레이어의 남은 시간이 종료되면 게임 종료하는 메소드 호출
     public void checkTimeLeft() {
@@ -103,7 +119,7 @@ public class GameRoom {
             return;
         }
 
-        int playerTimeLeft;
+        long playerTimeLeft;
 
         // 현재 턴이 백이면 백 플레이어의 남은 시간 체크
         if(turn.get() == 0) {
@@ -112,8 +128,10 @@ public class GameRoom {
             playerTimeLeft = playerBlack.getTimeLeft().get();
         }
 
+        currentTime = System.currentTimeMillis();
+
         // 현재 시간에서 가장 최근 턴 시작 시간을 뺀 시간이 플레이어의 남은 시간보다 크면 게임 종료
-        if(System.currentTimeMillis() - latestTurnStartTime.get() > playerTimeLeft) {
+        if(currentTime - latestTurnStartTime.get() > playerTimeLeft) {
             // 누구의 시간이 종료되었는지 알려주기 위해 turn 변수 전달
             sendGameOverMessage(turn.get()); 
             stopScheduler();
@@ -127,7 +145,7 @@ public class GameRoom {
         }
     }
 
-    // 게임 종료 메소드
+    //TODO 게임 종료 메소드
     private void sendGameOverMessage(int turn) {
         String destination1 = "/game/game-over/" + playerWhite.getUid();
         String destination2 = "/game/game-over/" + playerBlack.getUid();

@@ -5,9 +5,9 @@
 //
 //public class WebSocketHandlerImpl extends TextWebSocketHandler {
 //
-//    private final GameManager sessionManager;
+//    private final WaitingQueueRepository sessionManager;
 //
-//    public WebSocketHandlerImpl(GameManager sessionManager) {
+//    public WebSocketHandlerImpl(WaitingQueueRepository sessionManager) {
 //        this.sessionManager = sessionManager;
 //    }
 //
