@@ -9,7 +9,6 @@ import lombok.*;
 @AllArgsConstructor // 모든 필드를 파라미터로 받는 생성자 자동 생성
 @Builder // 빌더 패턴을 사용하는 메소드 자동 생성
 public class LoginRequest {
-    // Getters and Setters
     @NotBlank(message = "Username is mandatory")
     @Size(min = 3, max = 20, message = "Username must be between 3 and 20 characters")
     private String userName;
