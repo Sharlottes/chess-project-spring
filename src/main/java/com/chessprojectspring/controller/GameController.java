@@ -1,0 +1,152 @@
+package com.chessprojectspring.controller;
+
+import com.chessprojectspring.dto.game.MoveRequest;
+import com.chessprojectspring.repository.WaitingQueueRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.stereotype.Controller;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.chessprojectspring.game.GameRoom;
+import com.chessprojectspring.game.Player;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.EnableAsync;
+import com.chessprojectspring.repository.GameRoomRepository;
+import com.chessprojectspring.dto.game.FindGameRequest;
+import com.chessprojectspring.dto.game.FindGameResponse;
+import com.chessprojectspring.model.User;
+import com.chessprojectspring.repository.UserRepository;
+import com.chessprojectspring.service.GameService;
+import com.chessprojectspring.dto.TypeMessageDTO;
+
+@Controller
+@EnableAsync
+@Slf4j
+public class GameController {
+
+    private final SimpMessagingTemplate simpMessagingTemplate;
+    private final WaitingQueueRepository waitingQueueRepository;
+    private final GameRoomRepository gameRoomRepository;
+    private final UserRepository userRepository;
+    private final GameService gameService;
+
+    @Autowired
+    public GameController(SimpMessagingTemplate simpMessagingTemplate,
+                          WaitingQueueRepository waitingQueueRepository,
+                          GameRoomRepository gameRoomRepository,
+                          UserRepository userRepository,
+                          GameService gameService) {
+        this.simpMessagingTemplate = simpMessagingTemplate;
+        this.waitingQueueRepository = waitingQueueRepository;
+        this.gameRoomRepository = gameRoomRepository;
+        this.userRepository = userRepository;
+        this.gameService = gameService;
+    }
+
+    @MessageMapping("/send")
+    @SendTo("/sub/messages")
+    public String sendMessage(String message) {
+        log.debug(message);
+
+        simpMessagingTemplate.convertAndSend("/sub/messages", message);
+        
+        return message;
+    }
+
+    // 게임 찾기 메소드
+    // 클라이언트가 /pub/find-game 으로 자신의 uid를 보내면 호출되는 메소드d
+    // 클라이언트측 발행 path : /pub/find-game
+    // 클라이언트측 구독 path : /sub/find-game
+    @MessageMapping("/find-game")
+    @Async // 비동기 처리
+    public void findGame(FindGameRequest findGameRequest) {
+        Long uid1; // 이전에 대기큐에 있던 사람의 uid
+        Long uid2 = findGameRequest.getUid(); // 지금 들어온 사람의 uid
+
+        // 존재하는 uid 인지 확인
+        if (!userRepository.existsById(uid2)) {
+            simpMessagingTemplate.convertAndSend("/sub/find-game/" + uid2, 
+                new TypeMessageDTO("error", "존재하지 않는 uid입니다."));
+            return;
+        }
+
+        String destination = "/sub/find-game/" + uid2;
+
+        // 게임 대기 중인 사람이 있는지 확인
+        if (gameService.readyToPlay()) { 
+            
+            uid1 = gameService.startGame(findGameRequest);
+
+            // FindGameResponse 객체 생성
+            FindGameResponse findGameResponse1 = FindGameResponse.builder()
+                .type("game-start")
+                .message("게임이 시작되었습니다.")
+                .color("white")
+                .opponent(userRepository.getOpponent(uid2)) // 상대방 이므로 uid2
+                .build();
+
+            FindGameResponse findGameResponse2 = FindGameResponse.builder()
+                    .type("game-start")
+                    .message("게임이 시작되었습니다.")
+                    .color("black")
+                    .opponent(userRepository.getOpponent(uid1)) // 상대방 이므로 uid1
+                    .build();
+
+            // 게임 시작 메시지 전송
+            simpMessagingTemplate.convertAndSend("/sub/find-game/" + uid1, findGameResponse1);
+            simpMessagingTemplate.convertAndSend("/sub/find-game/" + uid2, findGameResponse2);
+
+        } else { // 게임 대기 중인 사람이 없는 경우
+            simpMessagingTemplate.convertAndSend(destination, 
+                new TypeMessageDTO("waiting", "매칭 상대 찾는 중"));
+            gameService.ready(uid2);
+
+            // 대기 시간 설정
+            try {
+                Thread.sleep(30000); // 30초 대기
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+            gameService.unready(uid2);
+            simpMessagingTemplate.convertAndSend(destination, 
+                new TypeMessageDTO("fail", "매칭에 실패했습니다. 다시 시도해 주세요."));
+            return;
+        }
+    }
+
+    // 체스 말을 움직이는 메소드 
+    // 클라이언트측 발행 path : /pub/move
+    // 클라이언트측 구독 path : /sub/move
+    @MessageMapping("/move")
+    public void movePiece(MoveRequest moveRequest) {
+        Long uid = moveRequest.getUid();
+        GameRoom gameRoom = gameRoomRepository.getGameRoomByUid(uid);
+
+        if (gameRoom == null) {
+            simpMessagingTemplate.convertAndSend("/sub/move/" + uid, "게임룸을 찾을 수 없습니다.");
+            return;
+        }
+
+        Player currentPlayer = gameRoom.getTurn().get() == 0 ? gameRoom.getPlayerWhite() : gameRoom.getPlayerBlack();
+
+        if (!currentPlayer.getUid().equals(uid)) {
+            simpMessagingTemplate.convertAndSend("/sub/move/" + uid, "본인의 턴이 아닙니다.");
+            return;
+        }
+
+        //TODO : 체스 말 움직임 유효성 검사
+        //boolean isValidMove = gameRoom.getBoard().isMoveLegal(moveRequest.getMove(), true);
+
+        //TODO : 체스 말 움직임 실행
+        // if (isValidMove) {
+        //     gameRoom.getBoard().doMove(moveRequest.getMove());
+        //     long timeSpent = System.currentTimeMillis() - gameRoom.getLatestTurnStartTime().get();
+        //     currentPlayer.getTimeLeft().addAndGet((int) -timeSpent / 1000);
+        //     gameRoom.changeTurn();
+        // } else {
+        //     simpMessagingTemplate.convertAndSend("/sub/move/" + uid, "invalid move");
+        // }
+    }
+}

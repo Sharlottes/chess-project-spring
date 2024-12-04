@@ -12,7 +12,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // username으로 유저 찾기
     Optional<User> findByUserName(String userName);
     
-    // 유저 전체 조회 (optional 사용)
+    // 유저 전체 조회
     List<User> findAll();
 
     // username 존재 여부 확인
@@ -20,4 +20,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 닉네임 존재 여부 확인
     boolean existsByNickname(String nickname);
+
+    // 필요없는 값을 비워 리턴. getOpponent
+    User getOpponent(Long uid);
 }
