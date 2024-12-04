@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Component
 @Setter
 @Getter
 @Builder
@@ -22,6 +21,7 @@ public class Player {
     private Long uid; // User.uid
 
     // 플레이어의 남은 시간 (ms)
+    @Builder.Default
     private AtomicLong timeLeft = new AtomicLong(1800000); // 30분
 
     // 추가시간 제공 메소드

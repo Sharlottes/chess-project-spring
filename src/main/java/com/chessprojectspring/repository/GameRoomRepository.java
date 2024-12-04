@@ -18,6 +18,7 @@ public class GameRoomRepository {
     // 게임룸 추가
     public Long addGameRoom(GameRoom gameRoom) {
         Long id = idGenerator.incrementAndGet();
+        gameRoom.setId(id);
         gameRoomMap.put(id, gameRoom);
         return id;
     }
@@ -43,5 +44,11 @@ public class GameRoomRepository {
                 .filter(gameRoom -> gameRoom.getPlayerWhite().getUid().equals(uid) || gameRoom.getPlayerBlack().getUid().equals(uid))
                 .findFirst()
                 .orElse(null);
+    }
+
+    // 게임 중인 상태인지 검사
+    public boolean isInGame(Long uid) {
+        return gameRoomMap.values().stream()
+                .anyMatch(gameRoom -> gameRoom.getPlayerWhite().getUid().equals(uid) || gameRoom.getPlayerBlack().getUid().equals(uid));
     }
 }

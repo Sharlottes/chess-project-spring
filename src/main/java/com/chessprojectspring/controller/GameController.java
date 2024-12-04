@@ -18,6 +18,7 @@ import com.chessprojectspring.dto.game.FindGameResponse;
 import com.chessprojectspring.model.User;
 import com.chessprojectspring.repository.UserRepository;
 import com.chessprojectspring.service.GameService;
+import com.chessprojectspring.service.UserService;
 import com.chessprojectspring.dto.TypeMessageDTO;
 
 @Controller
@@ -29,6 +30,7 @@ public class GameController {
     private final WaitingQueueRepository waitingQueueRepository;
     private final GameRoomRepository gameRoomRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
     private final GameService gameService;
 
     @Autowired
@@ -36,11 +38,13 @@ public class GameController {
                           WaitingQueueRepository waitingQueueRepository,
                           GameRoomRepository gameRoomRepository,
                           UserRepository userRepository,
+                          UserService userService,
                           GameService gameService) {
         this.simpMessagingTemplate = simpMessagingTemplate;
         this.waitingQueueRepository = waitingQueueRepository;
         this.gameRoomRepository = gameRoomRepository;
         this.userRepository = userRepository;
+        this.userService = userService;
         this.gameService = gameService;
     }
 
@@ -64,17 +68,31 @@ public class GameController {
         Long uid1; // 이전에 대기큐에 있던 사람의 uid
         Long uid2 = findGameRequest.getUid(); // 지금 들어온 사람의 uid
 
+        String destination = "/sub/find-game/" + uid2;
+
         // 존재하는 uid 인지 확인
         if (!userRepository.existsById(uid2)) {
-            simpMessagingTemplate.convertAndSend("/sub/find-game/" + uid2, 
+            simpMessagingTemplate.convertAndSend(destination,
                 new TypeMessageDTO("error", "존재하지 않는 uid입니다."));
             return;
         }
 
-        String destination = "/sub/find-game/" + uid2;
+        // 이미 대기 중인 상태인지 검사
+        if (gameService.isAlreadyReady(uid2)) {
+            simpMessagingTemplate.convertAndSend(destination,
+                    new TypeMessageDTO("waiting", "이미 대기 중인 상태입니다."));
+            return;
+        }
+
+        // 해당 uid 가 이미 게임 중인 경우
+        if (gameRoomRepository.isInGame(uid2)) {
+            simpMessagingTemplate.convertAndSend(destination,
+                    new TypeMessageDTO("error", "이미 게임 중인 상태입니다."));
+            return;
+        }
 
         // 게임 대기 중인 사람이 있는지 확인
-        if (gameService.readyToPlay()) { 
+        if (gameService.readyToPlay()) {
             
             uid1 = gameService.startGame(findGameRequest);
 
@@ -83,14 +101,14 @@ public class GameController {
                 .type("game-start")
                 .message("게임이 시작되었습니다.")
                 .color("white")
-                .opponent(userRepository.getOpponent(uid2)) // 상대방 이므로 uid2
+                .opponent(userService.getOpponent(uid2)) // 상대방 이므로 uid2
                 .build();
 
             FindGameResponse findGameResponse2 = FindGameResponse.builder()
                     .type("game-start")
                     .message("게임이 시작되었습니다.")
                     .color("black")
-                    .opponent(userRepository.getOpponent(uid1)) // 상대방 이므로 uid1
+                    .opponent(userService.getOpponent(uid1)) // 상대방 이므로 uid1
                     .build();
 
             // 게임 시작 메시지 전송
@@ -100,11 +118,13 @@ public class GameController {
         } else { // 게임 대기 중인 사람이 없는 경우
             simpMessagingTemplate.convertAndSend(destination, 
                 new TypeMessageDTO("waiting", "매칭 상대 찾는 중"));
+
             gameService.ready(uid2);
 
             // 대기 시간 설정
             try {
                 Thread.sleep(30000); // 30초 대기
+                //Thread.sleep(5000); // 5초 대기
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

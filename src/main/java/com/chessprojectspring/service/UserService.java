@@ -143,4 +143,20 @@ public class UserService {
         user.setNickname(editNicknameRequest.getNewNickname());
         return userRepository.save(user);
     }
+
+    public User getOpponent(Long uid) {
+        Optional<User> userOptional = userRepository.findById(uid);
+        if (!userOptional.isPresent()) {
+            return null;
+        }
+
+        User user = userOptional.get();
+        user.setUid(null);
+        user.setUserName(null);
+        user.setPassword(null);
+        user.getRecord().setId(null);
+        user.getRecord().setUser(null);
+
+        return user;
+    }
 }

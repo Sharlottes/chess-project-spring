@@ -3,33 +3,38 @@ package com.chessprojectspring.game;
 import com.github.bhlangonijr.chesslib.Board;
 
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.stereotype.Component;
+import com.chessprojectspring.repository.GameRoomRepository;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor
+@Slf4j
 public class GameRoom {
 
     // 게임룸 고유 id
-    private Long id;
+    private long id;
     
-    private final Board board = new Board();
+    @Builder.Default
+    private Board board = new Board();
 
-    private Player playerWhite; // 백돌이 먼저 시작
-    private Player playerBlack;
+    @Builder.Default
+    private Player playerWhite = new Player(); // 백돌이 먼저 시작
+    @Builder.Default
+    private Player playerBlack = new Player();
 
     // turn 변수는 현재 턴을 나타내는 변수 (스레드 안전하게 접근하기 위해 AtomicInteger 사용)
     @Builder.Default
@@ -54,10 +59,13 @@ public class GameRoom {
     private AtomicLong latestTurnStartTime = new AtomicLong(0);
 
     private SimpMessagingTemplate simpMessagingTemplate;
+    private GameRoomRepository gameRoomRepository;
 
     @Autowired
-    public GameRoom(SimpMessagingTemplate simpMessagingTemplate) {
+    public GameRoom(SimpMessagingTemplate simpMessagingTemplate, 
+                    GameRoomRepository gameRoomRepository) {
         this.simpMessagingTemplate = simpMessagingTemplate;
+        this.gameRoomRepository = gameRoomRepository;
     }
 
     // 게임 시작 시 초기화 메서드
@@ -103,7 +111,9 @@ public class GameRoom {
 
     // 스케줄링 시작 메소드
     public void startScheduler() {
-        scheduledFuture = scheduler.scheduleAtFixedRate(this::checkTimeLeft, 0, 100, TimeUnit.MILLISECONDS);
+        log.debug("[GameRoom{}-scheduler] Starting scheduler", id);
+        // TODO 100ms 로 다시 바꾸기. (테스트 용으로 1000ms 로 설정)
+        scheduledFuture = scheduler.scheduleAtFixedRate(this::checkTimeLeft, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
     // 현재 시간
@@ -112,7 +122,7 @@ public class GameRoom {
 
     // 플레이어의 남은 시간이 종료되면 게임 종료하는 메소드 호출
     public void checkTimeLeft() {
-        // 플레이어의 남은 시간이 종료되면 게임 종료하는 메소드 호출
+        log.debug("[GameRoom{}-scheduler] Checking time left", id);
 
         // 현재 snooze 상태면 무시
         if(isSnooze.get()) {
@@ -132,23 +142,26 @@ public class GameRoom {
 
         // 현재 시간에서 가장 최근 턴 시작 시간을 뺀 시간이 플레이어의 남은 시간보다 크면 게임 종료
         if(currentTime - latestTurnStartTime.get() > playerTimeLeft) {
+            // 턴과 남은시간(분:초) 출력
+            log.debug("[GameRoom{}-scheduler] Turn: {}, Time left: {}:{}", id, turn.get(), playerTimeLeft / 60000, (playerTimeLeft % 60000) / 1000);
+
             // 누구의 시간이 종료되었는지 알려주기 위해 turn 변수 전달
-            sendGameOverMessage(turn.get()); 
-            stopScheduler();
+            gameOver(turn.get());
         }
     }
 
     // 스케줄링 중지 메소드
     public void stopScheduler() {
         if (scheduledFuture != null) {
+            log.debug("[GameRoom{}-scheduler] Stopping scheduler", id);
             scheduledFuture.cancel(false);
         }
     }
 
     //TODO 게임 종료 메소드
-    private void sendGameOverMessage(int turn) {
-        String destination1 = "/game/game-over/" + playerWhite.getUid();
-        String destination2 = "/game/game-over/" + playerBlack.getUid();
+    private void gameOver(int turn) {
+        String destination1 = "/sub/game-over/" + playerWhite.getUid();
+        String destination2 = "/sub/game-over/" + playerBlack.getUid();
         String message;
         if(turn == 0) {
             message = "백 플레이어의 시간이 종료되었습니다.";
@@ -157,6 +170,10 @@ public class GameRoom {
         }
         simpMessagingTemplate.convertAndSend(destination1, message);
         simpMessagingTemplate.convertAndSend(destination2, message);
+
+        // 게임 룸 삭제
+        stopScheduler();
+        gameRoomRepository.removeGameRoom(id);
     }
 
     // 누가 이겼는지 반환하는 메소드
