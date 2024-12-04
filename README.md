@@ -174,6 +174,9 @@ private int draws = 0;
 ```JSON
 {"type" : "waiting",
 "message" : "매칭 상대 찾는 중"}
+
+{"type" : "waiting",
+"message" : "이미 대기 중인 상태입니다."}
 ```
 
 로딩 창 유지.
@@ -184,6 +187,13 @@ private int draws = 0;
 ```
 
 Alart 같은거 띄워준 후, home 화면 으로 리디렉션. (적절하게)
+
+```JSON
+{"type" : "error",
+"message" : "이미 게임 중인 상태입니다."}
+```
+
+해당 uid 가 속한 GameRoom 이 이미 존재할 때.
 
 ```JSON
 {"type" : "fail",
