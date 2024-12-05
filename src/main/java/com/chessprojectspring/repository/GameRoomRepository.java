@@ -8,16 +8,19 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
 @Repository
+@Slf4j
 public class GameRoomRepository {
 
-    private final Map<Long, GameRoom> gameRoomMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, GameRoom> gameRoomMap = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(0);
 
     // 게임룸 추가
     public Long addGameRoom(GameRoom gameRoom) {
         Long id = idGenerator.incrementAndGet();
+        gameRoom.setId(id);
         gameRoomMap.put(id, gameRoom);
         return id;
     }
@@ -29,7 +32,22 @@ public class GameRoomRepository {
 
     // 게임룸 삭제
     public void removeGameRoom(Long id) {
-        gameRoomMap.remove(id);
+        log.debug("[GameRoomRepository-removeGameRoom] 게임 룸 삭제 시작: {}", id);
+        try {
+            gameRoomMap.remove(id);
+        } catch (Exception e) {
+            log.error("[GameRoomRepository-removeGameRoom] 게임 룸 삭제 중 예외 발생: {}", id, e.getMessage());
+        }
+        log.debug("[GameRoomRepository-removeGameRoom] 게임 룸 삭제 완료: {}", id);
+
+        log.debug("--------------------------------");
+        log.debug("게임룸 삭제: {}", id);
+        log.debug("게임룸 사이즈: {}", gameRoomMap.size());
+        log.debug("--------------------------------");
+        log.debug("게임룸 목록: ");
+        gameRoomMap.forEach((key, value) -> {
+            log.debug("게임룸 ID: {}", key);
+        });
     }
 
     // 모든 게임룸 조회
@@ -43,5 +61,11 @@ public class GameRoomRepository {
                 .filter(gameRoom -> gameRoom.getPlayerWhite().getUid().equals(uid) || gameRoom.getPlayerBlack().getUid().equals(uid))
                 .findFirst()
                 .orElse(null);
+    }
+
+    // 게임 중인 상태인지 검사
+    public boolean isInGame(Long uid) {
+        return gameRoomMap.values().stream()
+                .anyMatch(gameRoom -> gameRoom.getPlayerWhite().getUid().equals(uid) || gameRoom.getPlayerBlack().getUid().equals(uid));
     }
 }

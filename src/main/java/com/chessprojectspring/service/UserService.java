@@ -153,4 +153,48 @@ public class UserService {
         user.setNickname(editNicknameRequest.getNewNickname());
         return userRepository.save(user);
     }
+
+    public User 
+    getOpponent(Long uid) {
+        Optional<User> userOptional = userRepository.findById(uid);
+        if (!userOptional.isPresent()) {
+            return null;
+        }
+
+        User user = userOptional.get();
+        user.setUid(null);
+        user.setUserName(null);
+        user.setPassword(null);
+        user.getRecord().setId(null);
+        user.getRecord().setUser(null);
+
+        return user;
+    }
+
+    // 유저 승리 횟수 증가
+    public void increaseWinCount(Long uid) {
+        User user = userRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        user.getRecord().setWins(user.getRecord().getWins() + 1);
+        userRepository.save(user);
+    }
+
+    // 유저 패배 횟수 증가
+    public void increaseLossCount(Long uid) {
+        User user = userRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        user.getRecord().setLosses(user.getRecord().getLosses() + 1);
+        userRepository.save(user);
+    }
+
+    // 유저 무승부 횟수 증가
+    public void increaseDrawCount(Long uid) {
+        User user = userRepository.findById(uid)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        user.getRecord().setDraws(user.getRecord().getDraws() + 1);
+        userRepository.save(user);
+    }
 }

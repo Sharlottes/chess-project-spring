@@ -38,6 +38,11 @@ public class GameService {
         waitingQueueRepository.removeFromWaitingQueue(uid);
     }
 
+    // 이미 대기 중인 상태인지 검사
+    public boolean isAlreadyReady(Long uid) {
+        return waitingQueueRepository.isInWaitingQueue(uid);
+    }
+
     /**
      * 게임 시작
      * @param findGameRequest
@@ -67,6 +72,8 @@ public class GameService {
                 .playerBlack(player2)
                 .timeToStartGame(findGameRequest.getTimeLeft())
                 .timeToAddEveryTurnStart(findGameRequest.getTimeToAddEveryTurnStart())
+                .simpMessagingTemplate(simpMessagingTemplate)
+                .gameRoomRepository(gameRoomRepository)
                 .build();
 
         // 게임 룸 저장

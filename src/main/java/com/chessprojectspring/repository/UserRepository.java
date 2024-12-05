@@ -20,7 +20,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 닉네임 존재 여부 확인
     boolean existsByNickname(String nickname);
-
-    // 필요없는 값을 비워 리턴. getOpponent
-    User getOpponent(Long uid);
 }
