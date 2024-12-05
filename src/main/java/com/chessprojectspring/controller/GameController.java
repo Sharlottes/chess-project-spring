@@ -68,6 +68,10 @@ public class GameController {
         Long uid1; // 이전에 대기큐에 있던 사람의 uid
         Long uid2 = findGameRequest.getUid(); // 지금 들어온 사람의 uid
 
+        //TODO 제거하기 (테스트용도)
+        // userService.increaseDrawCount(uid2);
+        userService.increaseWinCount(uid2);
+
         String destination = "/sub/find-game/" + uid2;
 
         // 존재하는 uid 인지 확인

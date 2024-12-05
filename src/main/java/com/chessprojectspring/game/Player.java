@@ -22,7 +22,7 @@ public class Player {
 
     // 플레이어의 남은 시간 (ms)
     @Builder.Default
-    private AtomicLong timeLeft = new AtomicLong(1800000); // 30분
+    private AtomicLong timeLeft = new AtomicLong(1800000); //1800000 30분
 
     // 추가시간 제공 메소드
     public void addTime(long timeToAdd) {

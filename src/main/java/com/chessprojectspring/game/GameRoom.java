@@ -2,6 +2,7 @@ package com.chessprojectspring.game;
 
 import com.github.bhlangonijr.chesslib.Board;
 
+import com.github.bhlangonijr.chesslib.move.Move;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -9,6 +10,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.stereotype.Component;
 import com.chessprojectspring.repository.GameRoomRepository;
+import com.github.bhlangonijr.chesslib.Side;
+import com.chessprojectspring.dto.game.GameOverResponse;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -72,12 +75,12 @@ public class GameRoom {
     public void initGame(long timeToStartGame, long timeToAddEveryTurnStart) {
         this.timeToStartGame = timeToStartGame;
         this.timeToAddEveryTurnStart = timeToAddEveryTurnStart;
-
-        playerWhite.getTimeLeft().set(1800000);
-        playerBlack.getTimeLeft().set(1800000);
+        initGame();
     }
     public void initGame() {
-        initGame(timeToStartGame, timeToAddEveryTurnStart);
+        log.debug("[GameRoom{}-initGame] Time to start game: {}, Time to add every turn start: {}", timeToStartGame, timeToAddEveryTurnStart);
+        playerWhite.getTimeLeft().set(timeToStartGame);
+        playerBlack.getTimeLeft().set(timeToStartGame);
     }
 
     // 게임 시작 메소드
@@ -88,18 +91,14 @@ public class GameRoom {
         startScheduler();
     }
 
-    // snooze 대기하는 메소드
-    public void snooze() {
-        isSnooze.set(true);
-    }
-
     // 턴 변경 메소드
-    public void changeTurn() {
-        turn.set(turn.addAndGet(1) % 2); // 현재 0이면 1, 1이면 0 으로 변경
-        if(turn.get() == 0) {
+    public void changeTurnForScheduler() {
+        if(getCurrentTurn() == Side.WHITE) {
             playerWhite.addTime(timeToAddEveryTurnStart);
+            turn.set(0);
         } else {
             playerBlack.addTime(timeToAddEveryTurnStart);
+            turn.set(1);
         }
         latestTurnStartTime.set(System.currentTimeMillis());
     }
@@ -122,12 +121,7 @@ public class GameRoom {
 
     // 플레이어의 남은 시간이 종료되면 게임 종료하는 메소드 호출
     public void checkTimeLeft() {
-        log.debug("[GameRoom{}-scheduler] Checking time left", id);
-
-        // 현재 snooze 상태면 무시
-        if(isSnooze.get()) {
-            return;
-        }
+        //log.debug("[GameRoom{}-scheduler] Checking time left", id);
 
         long playerTimeLeft;
 
@@ -140,13 +134,20 @@ public class GameRoom {
 
         currentTime = System.currentTimeMillis();
 
+        log.debug("--------------------------------");
+        log.debug("[GameRoom{}-scheduler] Turn: {}, Time left: {}:{}", id, getCurrentTurn(), playerTimeLeft / 60000, (playerTimeLeft % 60000) / 1000);
+        log.debug("current time: {}", currentTime);
+        log.debug("latest turn start time: {}", latestTurnStartTime.get());
+        log.debug("time difference: {}", currentTime - latestTurnStartTime.get());
+        log.debug("\n");
+
         // 현재 시간에서 가장 최근 턴 시작 시간을 뺀 시간이 플레이어의 남은 시간보다 크면 게임 종료
         if(currentTime - latestTurnStartTime.get() > playerTimeLeft) {
             // 턴과 남은시간(분:초) 출력
-            log.debug("[GameRoom{}-scheduler] Turn: {}, Time left: {}:{}", id, turn.get(), playerTimeLeft / 60000, (playerTimeLeft % 60000) / 1000);
-
+            
             // 누구의 시간이 종료되었는지 알려주기 위해 turn 변수 전달
-            gameOver(turn.get());
+            log.debug("[GameRoom{}-checkTimeLeft] Time over 진입 전", id);
+            timeOver();
         }
     }
 
@@ -158,26 +159,81 @@ public class GameRoom {
         }
     }
 
-    //TODO 게임 종료 메소드
-    private void gameOver(int turn) {
-        String destination1 = "/sub/game-over/" + playerWhite.getUid();
-        String destination2 = "/sub/game-over/" + playerBlack.getUid();
-        String message;
-        if(turn == 0) {
-            message = "백 플레이어의 시간이 종료되었습니다.";
-        } else {
-            message = "흑 플레이어의 시간이 종료되었습니다.";
+    // 타임오버 메소드
+    private void timeOver() {
+        log.debug("[GameRoom{}-timeOver] Time over 진입완료", id);
+
+        log.debug("[GameRoom{}-timeOver] 스케줄러 중지 전", id);
+        stopScheduler();
+        log.debug("[GameRoom{}-timeOver] 스케줄러 중지 후", id);
+
+        try {
+            log.debug("[GameRoom{}-timeOver] 게임 룸 삭제 전", id);
+            gameRoomRepository.removeGameRoom(id);
+            log.debug("[GameRoom{}-timeOver] 게임 룸 삭제 후", id);
+        } catch (Exception e) {
+            log.error("[GameRoom{}-timeOver] 게임 룸 삭제 중 예외 발생: {}", id, e.getMessage());
         }
-        simpMessagingTemplate.convertAndSend(destination1, message);
-        simpMessagingTemplate.convertAndSend(destination2, message);
+
+        String destinationWhite = "/sub/game-over/" + playerWhite.getUid();
+        String destinationBlack = "/sub/game-over/" + playerBlack.getUid();
+
+        GameOverResponse gameOverWhite;
+        GameOverResponse gameOverBlack;
+
+        if(getCurrentTurn() == Side.WHITE) { // 백 플레이어의 시간이 종료되었으면
+            gameOverWhite = GameOverResponse.builder()
+                    .message("백 플레이어의 시간이 종료되었습니다.")
+                    .gameResult("lose")
+                    .type("timeover")
+                    .build();
+            gameOverBlack = GameOverResponse.builder()
+                    .message("백 플레이어의 시간이 종료되었습니다.")
+                    .gameResult("win")
+                    .type("timeover")
+                    .build();
+        } else { // 흑 플레이어의 시간이 종료되었으면
+            gameOverWhite = GameOverResponse.builder()
+                    .message("흑 플레이어의 시간이 종료되었습니다.")
+                    .gameResult("win")
+                    .type("timeover")
+                    .build();
+            gameOverBlack = GameOverResponse.builder()
+                    .message("흑 플레이어의 ��간이 종료되었습니다.")
+                    .gameResult("lose")
+                    .type("timeover")
+                    .build();
+        }
+        simpMessagingTemplate.convertAndSend(destinationWhite, gameOverWhite);
+        simpMessagingTemplate.convertAndSend(destinationBlack, gameOverBlack);
 
         // 게임 룸 삭제
-        stopScheduler();
-        gameRoomRepository.removeGameRoom(id);
+        // stopScheduler(); // (순서 바꿔보기?)
+
+        // log.debug("[GameRoom{}-timeOver] 게임 룸 삭제 전", id);
+        // gameRoomRepository.removeGameRoom(id);
+        // log.debug("[GameRoom{}-timeOver] 게임 룸 삭제 후", id);
+        // stopScheduler();
+        // log.debug("[GameRoom{}-timeOver] 스케줄러 중지 후", id);
     }
 
-    // 누가 이겼는지 반환하는 메소드
-//    public String getWinner() {
-//
-//    }
+    // 현재 턴 반환 메소드
+    public Side getCurrentTurn() {
+        return board.getSideToMove();
+    }
+
+    // move 메소드
+    public void move(String move) {
+
+        //TODO 움직임 유효성 검사
+        
+        //TODO board 에 SAN 형식으로 움직임 적용
+
+        changeTurnForScheduler();
+    }
+
+    // 움직임 유효성 검사 메소드
+    public boolean isValidMove(String move) {
+        return true;
+    }
 } 

@@ -72,6 +72,8 @@ public class GameService {
                 .playerBlack(player2)
                 .timeToStartGame(findGameRequest.getTimeLeft())
                 .timeToAddEveryTurnStart(findGameRequest.getTimeToAddEveryTurnStart())
+                .simpMessagingTemplate(simpMessagingTemplate)
+                .gameRoomRepository(gameRoomRepository)
                 .build();
 
         // 게임 룸 저장
