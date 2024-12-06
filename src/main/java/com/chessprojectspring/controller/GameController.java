@@ -20,6 +20,9 @@ import com.chessprojectspring.repository.UserRepository;
 import com.chessprojectspring.service.GameService;
 import com.chessprojectspring.service.UserService;
 import com.chessprojectspring.dto.TypeMessageDTO;
+import com.github.bhlangonijr.chesslib.move.Move;
+import com.github.bhlangonijr.chesslib.Square;
+import com.chessprojectspring.dto.game.MoveResponse;
 
 @Controller
 @EnableAsync
@@ -153,30 +156,31 @@ public class GameController {
     public void movePiece(MoveRequest moveRequest) {
         Long uid = moveRequest.getUid();
         GameRoom gameRoom = gameRoomRepository.getGameRoomByUid(uid);
+        String san = moveRequest.getMove().replaceAll(" ", "");
 
         if (gameRoom == null) {
-            simpMessagingTemplate.convertAndSend("/sub/move/" + uid, "게임룸을 찾을 수 없습니다.");
+            simpMessagingTemplate.convertAndSend("/sub/move/" + uid, 
+                new TypeMessageDTO("error", "진행중인 게임을 찾을 수 없습니다."));
             return;
         }
 
-        Player currentPlayer = gameRoom.getTurn().get() == 0 ? gameRoom.getPlayerWhite() : gameRoom.getPlayerBlack();
+        Long currentTurnUid = gameRoom.getCurrentTurnUid();
 
-        if (!currentPlayer.getUid().equals(uid)) {
-            simpMessagingTemplate.convertAndSend("/sub/move/" + uid, "본인의 턴이 아닙니다.");
+        if (!currentTurnUid.equals(uid)) {
+            simpMessagingTemplate.convertAndSend("/sub/move/" + uid, 
+                new TypeMessageDTO("error", "본인의 턴이 아닙니다."));
             return;
         }
-
-        //TODO : 체스 말 움직임 유효성 검사
-        //boolean isValidMove = gameRoom.getBoard().isMoveLegal(moveRequest.getMove(), true);
 
         //TODO : 체스 말 움직임 실행
-        // if (isValidMove) {
-        //     gameRoom.getBoard().doMove(moveRequest.getMove());
-        //     long timeSpent = System.currentTimeMillis() - gameRoom.getLatestTurnStartTime().get();
-        //     currentPlayer.getTimeLeft().addAndGet((int) -timeSpent / 1000);
-        //     gameRoom.changeTurn();
-        // } else {
-        //     simpMessagingTemplate.convertAndSend("/sub/move/" + uid, "invalid move");
-        // }
+        gameRoom.move(san);
     }
+
+    //TODO SAN 형식의 string을 MOVE 형식으로 변환하는 메소드
+    // private Move convertSANToMove(String san) {
+    //     san = san.replaceAll("[=\\s]", "");
+    //     return new Move(san, );
+    // }
+
+
 }

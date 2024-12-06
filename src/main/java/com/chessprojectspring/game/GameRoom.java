@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import com.chessprojectspring.repository.GameRoomRepository;
 import com.github.bhlangonijr.chesslib.Side;
 import com.chessprojectspring.dto.game.GameOverResponse;
-
+import com.chessprojectspring.dto.game.MoveResponse;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.*;
@@ -91,7 +91,7 @@ public class GameRoom {
         startScheduler();
     }
 
-    // 턴 변경 메소드
+    // 스케줄러 위해 턴 변경 & 턴 추가시간 부여
     public void changeTurnForScheduler() {
         if(getCurrentTurn() == Side.WHITE) {
             playerWhite.addTime(timeToAddEveryTurnStart);
@@ -121,6 +121,11 @@ public class GameRoom {
 
     // 플레이어의 남은 시간이 종료되면 게임 종료하는 메소드 호출
     public void checkTimeLeft() {
+
+        if(isSnooze.get()) {
+            return;
+        }
+        
         //log.debug("[GameRoom{}-scheduler] Checking time left", id);
 
         long playerTimeLeft;
@@ -222,14 +227,74 @@ public class GameRoom {
         return board.getSideToMove();
     }
 
-    // move 메소드
-    public void move(String move) {
+    public Long getCurrentTurnUid() {
+        return getCurrentTurn() == Side.WHITE ? playerWhite.getUid() : playerBlack.getUid();
+    }
 
-        //TODO 움직임 유효성 검사
-        
-        //TODO board 에 SAN 형식으로 움직임 적용
+    // move 메소드
+    public void move(String san) {
+        // SAN 형식의 string을 MOVE 형식으로 변환
+        Move move = new Move(san.replaceAll("=", ""), getCurrentTurn());
+
+        // 움직임 유효성 검사
+        boolean isValidMove;
+
+        try {
+            isValidMove = board.isMoveLegal(move, true);
+        } catch (Exception e) {
+            isValidMove = false;
+        }
+
+        if (isValidMove) {
+            // 해당 move 가 정상적이므로, 이 로직이 실행되는동안 게임종료되는일이 없도록 snooze 설정
+            isSnooze.set(true);
+
+            // 남은시간 감소
+            long timeSpent = System.currentTimeMillis() - latestTurnStartTime.get();
+
+            if(getCurrentTurn() == Side.WHITE) {
+                playerWhite.getTimeLeft().addAndGet(- timeSpent);
+            } else {
+                playerBlack.getTimeLeft().addAndGet(- timeSpent);
+            }
+
+            // 움직임 실행
+            board.doMove(san);
+
+            // 스케줄러 위해 턴 변경 & 턴 추가시간 부여
+            changeTurnForScheduler();
+
+            MoveResponse moveResponseWhite = MoveResponse.builder()
+                    .type("success")
+                    .message("move success")
+                    .fen(board.getFen())
+                    .move(san)
+                    .turn(getCurrentTurn().value())
+                    .timeLeft(playerWhite.getTimeLeft().get())
+                    .build();
+
+            MoveResponse moveResponseBlack = MoveResponse.builder()
+                    .type("success")
+                    .message("move success")
+                    .fen(board.getFen())
+                    .move(san)
+                    .turn(getCurrentTurn().value())
+                    .timeLeft(playerBlack.getTimeLeft().get())
+                    .build();
+
+            simpMessagingTemplate.convertAndSend("/sub/move/" + playerWhite.getUid(), moveResponseWhite);
+            simpMessagingTemplate.convertAndSend("/sub/move/" + playerBlack.getUid(), moveResponseBlack);
+
+            isSnooze.set(false);
+        } else {
+            //simpMessagingTemplate.convertAndSend("/sub/move/" + uid, "invalid move");
+        }
 
         changeTurnForScheduler();
+
+
+
+        isSnooze.set(false);
     }
 
     // 움직임 유효성 검사 메소드
