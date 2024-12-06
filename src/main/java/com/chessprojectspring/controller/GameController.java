@@ -134,6 +134,12 @@ public class GameController {
             }
 
             gameService.unready(uid2);
+
+            // 이미 진행중인 게임이 있다면 매칭실패 메시지 전송안함
+            if (gameRoomRepository.isInGame(uid2)) {
+                return;
+            }
+            
             simpMessagingTemplate.convertAndSend(destination, 
                 new TypeMessageDTO("fail", "매칭에 실패했습니다. 다시 시도해 주세요."));
             return;

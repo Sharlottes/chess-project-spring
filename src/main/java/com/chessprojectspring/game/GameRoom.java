@@ -199,7 +199,7 @@ public class GameRoom {
                     .type("timeover")
                     .build();
             gameOverBlack = GameOverResponse.builder()
-                    .message("흑 플레이어의 ��간이 종료되었습니다.")
+                    .message("흑 플레이어의 시간이 종료되었습니다.")
                     .gameResult("lose")
                     .type("timeover")
                     .build();
