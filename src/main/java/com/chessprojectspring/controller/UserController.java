@@ -183,4 +183,14 @@ public class UserController {
 
         return ResponseEntity.ok("Remaining session time: " + remainingTime + " seconds");
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUser(@PathVariable Long id) {
+        try {
+            User user = userService.getOpponent(id);
+            return ResponseEntity.ok(user);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+    }
 }
