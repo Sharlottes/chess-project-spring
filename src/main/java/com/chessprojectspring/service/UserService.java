@@ -77,6 +77,7 @@ public class UserService {
         if (!userOptional.isPresent()) {
             // userName이 존재하지 않는 경우
             return LoginResponse.builder()
+                    .message("Username does not exist")
                     .userName("Username does not exist")
                     .build();
         }
@@ -86,6 +87,7 @@ public class UserService {
         if (!user.getPassword().equals(loginRequest.getPassword())) {
             // 비밀번호가 틀린 경우
             return LoginResponse.builder()
+                    .message("Incorrect password")
                     .password("Incorrect password")
                     .build();
         }
@@ -154,8 +156,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public User 
-    getOpponent(Long uid) {
+    public User getOpponent(Long uid) {
         Optional<User> userOptional = userRepository.findById(uid);
         if (!userOptional.isPresent()) {
             return null;
@@ -196,5 +197,10 @@ public class UserService {
 
         user.getRecord().setDraws(user.getRecord().getDraws() + 1);
         userRepository.save(user);
+    }
+
+    public User getUser(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 }
