@@ -1,5 +1,6 @@
 package com.chessprojectspring.game;
 
+import com.chessprojectspring.dto.game.GameOverResponse;
 import com.github.bhlangonijr.chesslib.Board;
 import com.github.bhlangonijr.chesslib.Square;
 import com.github.bhlangonijr.chesslib.move.Move;
@@ -71,4 +72,7 @@ class GameRoomTest {
         // 그럼 체크메이트도 내 왕이 안전해질수 있는 상태가 없는거잖아요 
     }
 
+    @Test
+    public void javaTest() {
+    }
 }

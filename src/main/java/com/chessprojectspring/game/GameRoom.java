@@ -19,6 +19,8 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import com.chessprojectspring.dto.TypeMessageDTO;
+import com.chessprojectspring.service.UserService;  
 
 @Component
 @Getter
@@ -63,12 +65,15 @@ public class GameRoom {
 
     private SimpMessagingTemplate simpMessagingTemplate;
     private GameRoomRepository gameRoomRepository;
+    private UserService userService;
 
     @Autowired
     public GameRoom(SimpMessagingTemplate simpMessagingTemplate, 
-                    GameRoomRepository gameRoomRepository) {
+                    GameRoomRepository gameRoomRepository,
+                    UserService userService) {
         this.simpMessagingTemplate = simpMessagingTemplate;
         this.gameRoomRepository = gameRoomRepository;
+        this.userService = userService;
     }
 
     // 게임 시작 시 초기화 메서드
@@ -211,15 +216,6 @@ public class GameRoom {
         }
         simpMessagingTemplate.convertAndSend(destinationWhite, gameOverWhite);
         simpMessagingTemplate.convertAndSend(destinationBlack, gameOverBlack);
-
-        // 게임 룸 삭제
-        // stopScheduler(); // (순서 바꿔보기?)
-
-        // log.debug("[GameRoom{}-timeOver] 게임 룸 삭제 전", id);
-        // gameRoomRepository.removeGameRoom(id);
-        // log.debug("[GameRoom{}-timeOver] 게임 룸 삭제 후", id);
-        // stopScheduler();
-        // log.debug("[GameRoom{}-timeOver] 스케줄러 중지 후", id);
     }
 
     // 현재 턴 반환 메소드
@@ -285,20 +281,154 @@ public class GameRoom {
             simpMessagingTemplate.convertAndSend("/sub/move/" + playerWhite.getUid(), moveResponseWhite);
             simpMessagingTemplate.convertAndSend("/sub/move/" + playerBlack.getUid(), moveResponseBlack);
 
+            log.debug("[GameRoom{}-move] move 완료 후\n{}", id, board.toString());
+
+            // 게임 종료 조건 체크 메소드
+            checkGameOver();
+
+            // 턴 변경시간 업데이트
+            latestTurnStartTime.set(System.currentTimeMillis());
+            
+            // snooze 해제
             isSnooze.set(false);
         } else {
-            //simpMessagingTemplate.convertAndSend("/sub/move/" + uid, "invalid move");
+            simpMessagingTemplate.convertAndSend("/sub/move/" + getCurrentTurnUid(), 
+                    new TypeMessageDTO("error", "유효하지 않은 움직임입니다."));
+            return;
         }
-
-        changeTurnForScheduler();
-
-
-
-        isSnooze.set(false);
     }
 
     // 움직임 유효성 검사 메소드
     public boolean isValidMove(String move) {
         return true;
+    }
+
+    // 게임 종료 조건 체크 메소드
+    public void checkGameOver() {
+        GameOverResponse gameOverResponseWhite;
+        GameOverResponse gameOverResponseBlack;
+
+        // 스테일메이트 일 때 게임 끝나는 로직
+        if(board.isStaleMate()) {
+            // 게임 끝내는 코드
+            stopScheduler();
+            try {
+                gameRoomRepository.removeGameRoom(id);
+            } catch (Exception e) {
+                log.error("[GameRoom{}-timeOver] 게임 룸 삭제 중 예외 발생: {}", id, e.getMessage());
+            }
+
+            // draw 1 증가
+            userService.increaseDrawCount(playerWhite.getUid());
+            userService.increaseDrawCount(playerBlack.getUid());
+            
+            gameOverResponseWhite = GameOverResponse.builder()
+                    .message("스테일메이트 입니다.")
+                    .gameResult("draw")
+                    .type("stalemate")
+                    .record(userService.getOpponent(playerWhite.getUid()).getRecord())
+                    .build();
+
+            gameOverResponseBlack = GameOverResponse.builder()
+                    .message("스테일메이트 입니다.")
+                    .gameResult("draw")
+                    .type("stalemate")
+                    .record(userService.getOpponent(playerBlack.getUid()).getRecord())
+                    .build();
+
+            simpMessagingTemplate.convertAndSend("/sub/game-over/" + playerWhite.getUid(), gameOverResponseWhite);
+            simpMessagingTemplate.convertAndSend("/sub/game-over/" + playerBlack.getUid(), gameOverResponseBlack);
+            return;
+        }
+
+        // 체크메이트 일 때 게임 끝나는 로직
+        if(board.isMated()) {
+            // 게임 끝내는 코드
+            stopScheduler();
+            try {
+                gameRoomRepository.removeGameRoom(id);
+            } catch (Exception e) {
+                log.error("[GameRoom{}-timeOver] 게임 룸 삭제 중 예외 발생: {}", id, e.getMessage());
+            }
+
+            if(getCurrentTurn() == Side.WHITE) { // White 가 짐
+                userService.increaseLossCount(playerWhite.getUid());
+                userService.increaseWinCount(playerBlack.getUid());
+
+                gameOverResponseWhite = GameOverResponse.builder()
+                        .message("체크메이트 입니다.")
+                        .gameResult("lose")
+                        .type("checkmate")
+                        .record(userService.getOpponent(playerWhite.getUid()).getRecord())
+                        .build();
+
+                gameOverResponseBlack = GameOverResponse.builder()
+                        .message("체크메이트 입니다.")
+                        .gameResult("win")
+                        .type("checkmate")
+                        .record(userService.getOpponent(playerBlack.getUid()).getRecord())
+                        .build();
+            } else { // Black 이 짐
+                userService.increaseWinCount(playerWhite.getUid());
+                userService.increaseLossCount(playerBlack.getUid());
+
+                gameOverResponseWhite = GameOverResponse.builder()
+                        .message("체크메이트 입니다.")
+                        .gameResult("win")
+                        .type("checkmate")
+                        .record(userService.getOpponent(playerWhite.getUid()).getRecord())
+                        .build();
+
+                gameOverResponseBlack = GameOverResponse.builder()
+                        .message("체크메이트 입니다.")
+                        .gameResult("lose")
+                        .type("checkmate")
+                        .record(userService.getOpponent(playerBlack.getUid()).getRecord())
+                        .build();
+            }
+
+            simpMessagingTemplate.convertAndSend("/sub/game-over/" + playerWhite.getUid(), gameOverResponseWhite);
+            simpMessagingTemplate.convertAndSend("/sub/game-over/" + playerBlack.getUid(), gameOverResponseBlack);
+            return;
+        }
+
+        // draw 조건 체크
+        if(board.isDraw()) {
+            // 게임 끝내는 코드
+            stopScheduler();
+            try {
+                gameRoomRepository.removeGameRoom(id);
+            } catch (Exception e) {
+                log.error("[GameRoom{}-timeOver] 게임 룸 삭제 중 예외 발생: {}", id, e.getMessage());
+            }
+
+            // draw 1 증가
+            userService.increaseDrawCount(playerWhite.getUid());
+            userService.increaseDrawCount(playerBlack.getUid());
+
+            gameOverResponseWhite = GameOverResponse.builder()
+                    .message("무승부 입니다.")
+                    .gameResult("draw")
+                    .type("draw")
+                    .record(userService.getOpponent(playerWhite.getUid()).getRecord())
+                    .build();
+
+            gameOverResponseBlack = GameOverResponse.builder()
+                    .message("무승부 입니다.")
+                    .gameResult("draw")
+                    .type("draw")
+                    .record(userService.getOpponent(playerBlack.getUid()).getRecord())
+                    .build();
+
+            simpMessagingTemplate.convertAndSend("/sub/game-over/" + playerWhite.getUid(), gameOverResponseWhite);
+            simpMessagingTemplate.convertAndSend("/sub/game-over/" + playerBlack.getUid(), gameOverResponseBlack);
+            return;
+        }
+
+        // 일반 체크 상태일때 알려주기
+        if(board.isKingAttacked()) {
+            simpMessagingTemplate.convertAndSend("/sub/move/" + getCurrentTurnUid(), 
+                    new TypeMessageDTO("checked", "현재 King이 위협받고 있습니다."));
+        }
     }
 } 

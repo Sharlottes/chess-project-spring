@@ -3,12 +3,14 @@ package com.chessprojectspring.service;
 import com.chessprojectspring.dto.TypeMessageDTO;
 import com.chessprojectspring.dto.game.FindGameRequest;
 import com.chessprojectspring.game.GameRoom;
+
 import com.chessprojectspring.game.Player;
 
 import org.springframework.stereotype.Service;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import com.chessprojectspring.repository.WaitingQueueRepository;
 import com.chessprojectspring.repository.GameRoomRepository;
+import com.chessprojectspring.service.UserService;
 
 @Service
 public class GameService {
@@ -16,13 +18,16 @@ public class GameService {
     private final WaitingQueueRepository waitingQueueRepository;
     private final GameRoomRepository gameRoomRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
+    private final UserService userService;
 
     public GameService(WaitingQueueRepository waitingQueueRepository, 
                        GameRoomRepository gameRoomRepository,
-                       SimpMessagingTemplate simpMessagingTemplate) {
+                       SimpMessagingTemplate simpMessagingTemplate,
+                       UserService userService) {
         this.waitingQueueRepository = waitingQueueRepository;
         this.gameRoomRepository = gameRoomRepository;
         this.simpMessagingTemplate = simpMessagingTemplate;
+        this.userService = userService;
     }
 
     // 게임이 시작할 수 있는 상태인지 확인 
@@ -74,6 +79,7 @@ public class GameService {
                 .timeToAddEveryTurnStart(findGameRequest.getTimeToAddEveryTurnStart())
                 .simpMessagingTemplate(simpMessagingTemplate)
                 .gameRoomRepository(gameRoomRepository)
+                .userService(userService)
                 .build();
 
         // 게임 룸 저장
