@@ -255,6 +255,9 @@ public class GameRoom {
             // 해당 move 가 정상적이므로, 이 로직이 실행되는동안 게임종료되는일이 없도록 snooze 설정
             isSnooze.set(true);
 
+            // 스케줄러 위해 턴 변경 & 턴 추가시간 부여
+            changeTurnForScheduler();
+
             // 남은시간 감소
             long timeSpent = System.currentTimeMillis() - latestTurnStartTime.get();
 
@@ -266,9 +269,6 @@ public class GameRoom {
 
             // 움직임 실행
             board.doMove(san);
-
-            // 스케줄러 위해 턴 변경 & 턴 추가시간 부여
-            changeTurnForScheduler();
 
             MoveResponse moveResponseWhite = MoveResponse.builder()
                     .type("success")
