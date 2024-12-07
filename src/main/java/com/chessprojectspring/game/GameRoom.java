@@ -98,12 +98,12 @@ public class GameRoom {
 
     // 스케줄러 위해 턴 변경 & 턴 추가시간 부여
     public void changeTurnForScheduler() {
-        if(getCurrentTurn() == Side.WHITE) {
+        if(getCurrentTurn() == Side.WHITE) { // 현재 턴이 백이면
             playerWhite.addTime(timeToAddEveryTurnStart);
-            turn.set(0);
-        } else {
+            turn.set(1); // 흑으로 변경
+        } else { // 현재 턴이 흑이면
             playerBlack.addTime(timeToAddEveryTurnStart);
-            turn.set(1);
+            turn.set(0); // 백으로 변경
         }
         latestTurnStartTime.set(System.currentTimeMillis());
     }
