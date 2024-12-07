@@ -192,26 +192,36 @@ public class GameRoom {
         GameOverResponse gameOverBlack;
 
         if(getCurrentTurn() == Side.WHITE) { // 백 플레이어의 시간이 종료되었으면
+            userService.increaseLossCount(playerWhite.getUid());
+            userService.increaseWinCount(playerBlack.getUid());
+
             gameOverWhite = GameOverResponse.builder()
                     .message("백 플레이어의 시간이 종료되었습니다.")
                     .gameResult("lose")
                     .type("timeover")
+                    .record(userService.getOpponent(playerWhite.getUid()).getRecord())
                     .build();
             gameOverBlack = GameOverResponse.builder()
                     .message("백 플레이어의 시간이 종료되었습니다.")
                     .gameResult("win")
                     .type("timeover")
+                    .record(userService.getOpponent(playerBlack.getUid()).getRecord())
                     .build();
         } else { // 흑 플레이어의 시간이 종료되었으면
+            userService.increaseWinCount(playerWhite.getUid());
+            userService.increaseLossCount(playerBlack.getUid());
+
             gameOverWhite = GameOverResponse.builder()
                     .message("흑 플레이어의 시간이 종료되었습니다.")
                     .gameResult("win")
                     .type("timeover")
+                    .record(userService.getOpponent(playerWhite.getUid()).getRecord())
                     .build();
             gameOverBlack = GameOverResponse.builder()
                     .message("흑 플레이어의 시간이 종료되었습니다.")
                     .gameResult("lose")
                     .type("timeover")
+                    .record(userService.getOpponent(playerBlack.getUid()).getRecord())
                     .build();
         }
         simpMessagingTemplate.convertAndSend(destinationWhite, gameOverWhite);
