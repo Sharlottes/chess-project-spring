@@ -98,12 +98,12 @@ public class GameRoom {
 
     // 스케줄러 위해 턴 변경 & 턴 추가시간 부여
     public void changeTurnForScheduler() {
-        if(getCurrentTurn() == Side.WHITE) {
+        if(getCurrentTurn() == Side.WHITE) { // 현재 턴이 백이면
             playerWhite.addTime(timeToAddEveryTurnStart);
-            turn.set(0);
-        } else {
+            turn.set(1); // 흑으로 변경
+        } else { // 현재 턴이 흑이면
             playerBlack.addTime(timeToAddEveryTurnStart);
-            turn.set(1);
+            turn.set(0); // 백으로 변경
         }
         latestTurnStartTime.set(System.currentTimeMillis());
     }
@@ -192,26 +192,36 @@ public class GameRoom {
         GameOverResponse gameOverBlack;
 
         if(getCurrentTurn() == Side.WHITE) { // 백 플레이어의 시간이 종료되었으면
+            userService.increaseLossCount(playerWhite.getUid());
+            userService.increaseWinCount(playerBlack.getUid());
+
             gameOverWhite = GameOverResponse.builder()
                     .message("백 플레이어의 시간이 종료되었습니다.")
                     .gameResult("lose")
                     .type("timeover")
+                    .record(userService.getOpponent(playerWhite.getUid()).getRecord())
                     .build();
             gameOverBlack = GameOverResponse.builder()
                     .message("백 플레이어의 시간이 종료되었습니다.")
                     .gameResult("win")
                     .type("timeover")
+                    .record(userService.getOpponent(playerBlack.getUid()).getRecord())
                     .build();
         } else { // 흑 플레이어의 시간이 종료되었으면
+            userService.increaseWinCount(playerWhite.getUid());
+            userService.increaseLossCount(playerBlack.getUid());
+
             gameOverWhite = GameOverResponse.builder()
                     .message("흑 플레이어의 시간이 종료되었습니다.")
                     .gameResult("win")
                     .type("timeover")
+                    .record(userService.getOpponent(playerWhite.getUid()).getRecord())
                     .build();
             gameOverBlack = GameOverResponse.builder()
                     .message("흑 플레이어의 시간이 종료되었습니다.")
                     .gameResult("lose")
                     .type("timeover")
+                    .record(userService.getOpponent(playerBlack.getUid()).getRecord())
                     .build();
         }
         simpMessagingTemplate.convertAndSend(destinationWhite, gameOverWhite);
@@ -245,6 +255,9 @@ public class GameRoom {
             // 해당 move 가 정상적이므로, 이 로직이 실행되는동안 게임종료되는일이 없도록 snooze 설정
             isSnooze.set(true);
 
+            // 스케줄러 위해 턴 변경 & 턴 추가시간 부여
+            changeTurnForScheduler();
+
             // 남은시간 감소
             long timeSpent = System.currentTimeMillis() - latestTurnStartTime.get();
 
@@ -256,9 +269,6 @@ public class GameRoom {
 
             // 움직임 실행
             board.doMove(san);
-
-            // 스케줄러 위해 턴 변경 & 턴 추가시간 부여
-            changeTurnForScheduler();
 
             MoveResponse moveResponseWhite = MoveResponse.builder()
                     .type("success")
