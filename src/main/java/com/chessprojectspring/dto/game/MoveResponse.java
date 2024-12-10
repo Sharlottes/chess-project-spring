@@ -16,4 +16,5 @@ public class MoveResponse {
     String move;
     String turn;
     long timeLeft;
+    long timeLeftOpponent;
 }

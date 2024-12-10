@@ -267,7 +267,7 @@ public class GameRoom {
                 playerBlack.getTimeLeft().addAndGet(- timeSpent);
             }
 
-            // 움직임 실행
+            // 움직임 실행 (Board 의 Turn 정보 바뀌는 위치)
             board.doMove(san);
 
             MoveResponse moveResponseWhite = MoveResponse.builder()
@@ -277,6 +277,7 @@ public class GameRoom {
                     .move(san)
                     .turn(getCurrentTurn().value())
                     .timeLeft(playerWhite.getTimeLeft().get())
+                    .timeLeftOpponent(playerBlack.getTimeLeft().get())
                     .build();
 
             MoveResponse moveResponseBlack = MoveResponse.builder()
@@ -286,6 +287,7 @@ public class GameRoom {
                     .move(san)
                     .turn(getCurrentTurn().value())
                     .timeLeft(playerBlack.getTimeLeft().get())
+                    .timeLeftOpponent(playerWhite.getTimeLeft().get())
                     .build();
 
             simpMessagingTemplate.convertAndSend("/sub/move/" + playerWhite.getUid(), moveResponseWhite);

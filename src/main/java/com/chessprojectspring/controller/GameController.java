@@ -72,8 +72,8 @@ public class GameController {
         Long uid2 = findGameRequest.getUid(); // 지금 들어온 사람의 uid
 
         //TODO 제거하기 (테스트용도)
-        // userService.increaseDrawCount(uid2);
-        userService.increaseWinCount(uid2);
+        //userService.increaseDrawCount(uid2);
+        //userService.increaseWinCount(uid2);
 
         String destination = "/sub/find-game/" + uid2;
 
@@ -172,15 +172,7 @@ public class GameController {
             return;
         }
 
-        //TODO : 체스 말 움직임 실행
+        // 체스 말 움직임 실행
         gameRoom.move(san);
     }
-
-    //TODO SAN 형식의 string을 MOVE 형식으로 변환하는 메소드
-    // private Move convertSANToMove(String san) {
-    //     san = san.replaceAll("[=\\s]", "");
-    //     return new Move(san, );
-    // }
-
-
 }
